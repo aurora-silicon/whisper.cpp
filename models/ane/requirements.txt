@@ -1,0 +1,5 @@
+# Linux CPU wheels: install torch from https://download.pytorch.org/whl/cpu first.
+torch==2.5.0
+coremltools==8.3.0
+openai-whisper==20250625
+numpy==1.26.4

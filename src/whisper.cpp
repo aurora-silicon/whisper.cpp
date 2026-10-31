@@ -11,6 +11,9 @@
 #endif
 
 #include "aneforge/whisper-aneforge.h"
+#ifdef WHISPER_USE_ANE
+#include "ane/whisper-ane.h"
+#endif
 
 #ifdef WHISPER_USE_OPENVINO
 #include "openvino/whisper-openvino-encoder.h"
@@ -906,6 +909,9 @@ struct whisper_state {
 #endif
 
     whisper_aneforge_context * ctx_aneforge = nullptr;
+#ifdef WHISPER_USE_ANE
+    whisper_ane_context * ctx_ane = nullptr;
+#endif
 
 #ifdef WHISPER_USE_OPENVINO
     whisper_openvino_context * ctx_openvino = nullptr;
@@ -2414,6 +2420,8 @@ static bool whisper_encode_internal(
                    void * abort_callback_data) {
     const int64_t t_start_us = ggml_time_us();
 
+    bool encoder_done = false;
+
     // conv
     {
         auto & sched = wstate.sched_conv.sched;
@@ -2453,6 +2461,29 @@ static bool whisper_encode_internal(
         }
 
         if (!whisper_encode_external(wstate)) {
+#ifdef WHISPER_USE_ANE
+            if (wstate.ctx_ane) {
+                auto & enc_sched = wstate.sched_encode.sched;
+                ggml_cgraph * enc = whisper_build_graph_encoder(wctx, wstate);
+                if (!ggml_backend_sched_alloc_graph(enc_sched, enc)) {
+                    return false;
+                }
+                const auto & hp = wctx.model.hparams;
+                const int n_ctx = int(mel->ne[0]/2);
+                if (!whisper_ane_encode(wstate.ctx_ane, wstate.inp_mel.data(), hp.n_mels,
+                        n_ctx, hp.n_audio_state,
+                        [&]() {
+                            return ggml_graph_compute_helper(sched, gf, n_threads) &&
+                                   ggml_graph_compute_helper(enc_sched, enc, n_threads);
+                        },
+                        [&](const float * values) {
+                            ggml_backend_tensor_set(wstate.embd_enc, values, 0, ggml_nbytes(wstate.embd_enc));
+                        })) {
+                    return false;
+                }
+                encoder_done = true;
+            } else
+#endif
             if (!ggml_graph_compute_helper(sched, gf, n_threads)) {
                 return false;
             }
@@ -2487,7 +2518,7 @@ static bool whisper_encode_internal(
     }
 
     // encoder
-    if (!whisper_encode_external(wstate)) {
+    if (!encoder_done && !whisper_encode_external(wstate)) {
         auto & sched = wstate.sched_encode.sched;
 
         ggml_cgraph * gf = whisper_build_graph_encoder(wctx, wstate);
@@ -2500,6 +2531,18 @@ static bool whisper_encode_internal(
         if (!ggml_graph_compute_helper(sched, gf, n_threads)) {
             return false;
         }
+    }
+
+    // Explicit opt-in parity capture, before CPU decoder cross projections.
+    if (const char * prefix = getenv("WHISPER_ENCODER_DUMP")) {
+        const std::string path = std::string(prefix) + "-" + std::to_string(wstate.n_encode) + ".f32";
+        std::vector<float> values(ggml_nelements(wstate.embd_enc));
+        ggml_backend_tensor_get(wstate.embd_enc, values.data(), 0, ggml_nbytes(wstate.embd_enc));
+        FILE * f = fopen(path.c_str(), "wb");
+        if (!f) { return false; }
+        const bool ok = fwrite(values.data(), sizeof(float), values.size(), f) == values.size();
+        const int close_rc = fclose(f);
+        if (!ok || close_rc) { return false; }
     }
 
     // cross
@@ -3568,6 +3611,12 @@ struct whisper_state * whisper_init_state(whisper_context * ctx) {
         WHISPER_LOG_INFO("%s: ANEForge encoder loaded\n", __func__);
     }
 
+#ifdef WHISPER_USE_ANE
+    if (!whisper_encode_external(*state)) {
+        state->ctx_ane = whisper_ane_init(ctx->path_model.c_str());
+    }
+#endif
+
     state->logits.reserve(ctx->vocab.n_vocab * ctx->model.hparams.n_text_ctx);
 
     state->batch = whisper_batch_init(ctx->model.hparams.n_text_ctx, WHISPER_MAX_DECODERS);
@@ -3819,6 +3868,14 @@ struct whisper_context * whisper_init_from_buffer_with_params_no_state(void * bu
 
 struct whisper_context * whisper_init_with_params_no_state(struct whisper_model_loader * loader, struct whisper_context_params params) {
     ggml_time_init();
+#ifdef WHISPER_USE_ANE
+    if (const char * bundle = getenv("WHISPER_ANE_ENCODER")) {
+        if (*bundle) {
+            params.use_gpu = false; // both fallback encoder and decoder use CPU
+            params.flash_attn = false;
+        }
+    }
+#endif
 
     if (params.flash_attn && params.dtw_token_timestamps) {
         WHISPER_LOG_WARN("%s: dtw_token_timestamps is not supported with flash_attn - disabling\n", __func__);
@@ -3941,6 +3998,10 @@ void whisper_free_state(struct whisper_state * state) {
             whisper_coreml_free(state->ctx_coreml);
             state->ctx_coreml = nullptr;
         }
+#endif
+
+#ifdef WHISPER_USE_ANE
+        whisper_ane_free(state->ctx_ane);
 #endif
 
         if (state->ctx_aneforge != nullptr) {
