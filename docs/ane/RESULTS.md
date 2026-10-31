@@ -1,20 +1,18 @@
 # Verification results
 
-Status: Linux build and software checks pass; no native Whisper encoder
-inference result is claimed. The corrected compiler job remains queued through the controller. This page will be updated from their saved receipts before review.
+Status: Linux CPU fallback and compiler coverage are verified. No complete
+Whisper encoder package compiles with the pinned compiler, so native encoder
+parity, WER, realtime factor and power remain unqualified.
 
 ## Software checks
 
-Sixteen host standard-library tests pass: seven bundle/weight/interface
-checks, two WER metric checks, five capture/parity checks and one cross-process
-native-retirement check and one compiler-classification check. Python syntax, shell syntax and whitespace
-checks pass. The optional power sampler runs a command without a sensor and
-correctly labels power unavailable. These are software checks only.
-
-The Linux build at `31200669` with `WHISPER_ANE=ON` and `GGML_NATIVE=OFF` passes on x86_64
-with GCC 16.1.1. All five unit tests pass, including the adapter fallback and
-repeated native-handoff graph tests. All sixteen Python checks also pass on Linux. The build used eight jobs and the pinned libane revision in
-[the build instructions](README.md).
+The Linux build at `31200669` with `WHISPER_ANE=ON`, `GGML_NATIVE=OFF`, GCC
+16.1.1 and eight jobs passes on x86_64. All five CTest unit cases pass, including
+adapter fallback and repeated native-handoff graph reuse. Sixteen Python checks
+also pass: seven bundle/interface checks, two WER checks, five parity checks,
+one cross-process retirement check and one compiler-classification check.
+Python/shell syntax and whitespace checks pass. The no-sensor power-sampler
+smoke test runs its command successfully and labels power unavailable.
 
 ## Host CPU and fallback measurements
 
@@ -46,40 +44,33 @@ effects, not acceleration. Wall RTF includes process/model setup and parity
 capture; encoder RTF also includes CPU cross projection. The subset and word
 normalizer are described in [README](README.md). No ANE RTF or power was measured.
 
-## Export configuration correction
+Native qualification must use the checkpoint-matched converted ggml recorded
+in [compiler-coverage.json](compiler-coverage.json). This host fallback run used
+the downloaded model hash above; no cross-format or native parity is claimed.
 
-The first Linux job exported tiny.en, base.en and small.en successfully, but all
-H13/H14 full graphs and isolated probes stopped at
-`ane.verify.unsupported-opset`: program 1.3 requires `ios18`, while the exporter
-requested `ios16`. This was an exporter configuration error, not operation
-coverage evidence. Both coremltools conversion and emitted headers now use
-`ios18`; a corrected buildbox export/probe run is queued. The initial failed
-receipts are preserved locally.
+## Compiler coverage and t-3651 handoff
 
-## Coverage handoff in t-3651 terms
+Public tiny.en, base.en and small.en all export successfully with coremltools
+8.3.0 / CPU PyTorch 2.5.0, using MIL program 1.3 / ios18. All six H13/H14 full
+graphs return 65: H13 reports `h13.nonfoldable-transpose`, H14 reports
+`h14.conv-outside-envelope`. No runnable encoder package is produced.
 
-The reproducible coverage command is `models/ane/compile.py BUNDLE --compiler
-MIL_HWXC --target H13` (repeat for H14). It records the exact op/shape, full-graph
-status, compiler diagnostic code, real open weight source and successful program
-count. Exit 65 with parser/lexer diagnostics is an export/parser error, not an
-operation refusal; timeouts and invocation failures are also errors. Raw job logs remain local; only public model
-shapes and diagnostics should be copied into a public coverage report.
+Across 120 isolated probes, five compile, 108 refuse by name and seven H13
+linear probes reach the 60-second host timeout. Those timeouts are not counted
+as operation refusals. Even successful probes expand substantially: a tiny.en
+D-to-D linear emits 10,500 programs, and residual adds emit 9,000 / 12,000 /
+18,000 programs for tiny/base/small. No native speed follows from compilation.
 
-Architecture-derived candidate gaps to check against those receipts:
+See [the measured operation/shape handoff](COVERAGE.md) and
+[complete public compiler receipt](compiler-coverage.json) for exact shapes,
+attributes, diagnostic codes, compile counts and timeout cases. Isolated
+view-only reshape refusals are explicitly distinguished from composed-graph
+coverage. Raw paths/logs and open weight blobs remain local.
 
-| Area | tiny / base / small encoder geometry | Coverage question |
-| --- | --- | --- |
-| First Conv1d | `[1,80,3000]`, weights `[D,80,3]`, stride 1 | rank-3 convolution and 3000-step sequence |
-| Second Conv1d | `[1,D,3000]`, weights `[D,D,3]`, stride 2 -> `[1,D,1500]` | rank-3 convolution and 1500-step output |
-| Q/K/V and attention output projection | `[1,1500,D]`, weights `[D,D]` | large-sequence linear/batched matmul |
-| Feed-forward | `D -> 4D -> D` over 1500 tokens | 1536/2048/3072-wide activation and projections |
-| Attention | `H=6/8/12`, head width 64, logits `[1,H,1500,1500]` | batched matmul, transpose and 1500-wide softmax |
-| Normalization | `[1,1500,D]`, axis -1 with learned scale/bias | affine layer norm and this exact envelope |
-| Activation/layout | GELU, casts, reshape and transpose at those shapes | dtype/layout support, not just op-name coverage |
-
-`D=384/512/768`. These rows are model geometry, not measured compiler refusals.
-The exact compiler results must replace speculation; an exporter/parser error
-must be fixed before declaring a model operation unsupported.
+The initial export job used ios16 and stopped at `unsupported-opset`; this
+exporter configuration error was corrected in conversion and serialization,
+then all models were rerun. Initial failed receipts are retained locally. The
+corrected run has no parser/opset errors.
 
 ## Remaining native qualification
 
