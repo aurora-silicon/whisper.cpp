@@ -6,8 +6,8 @@ This page will be updated from their saved receipts before review.
 
 ## Software checks
 
-Eight host standard-library tests pass: six bundle/weight/interface rejection
-checks and two WER metric checks. Python syntax, shell syntax and whitespace
+Fourteen host standard-library tests pass: seven bundle/weight/interface
+checks, two WER metric checks and five capture/parity checks. Python syntax, shell syntax and whitespace
 checks pass. The optional power sampler runs a command without a sensor and
 correctly labels power unavailable. These are software checks only.
 
@@ -20,8 +20,8 @@ measured yet. No ANE throughput, WER or power number is available.
 The reproducible coverage command is `models/ane/compile.py BUNDLE --compiler
 MIL_HWXC --target H13` (repeat for H14). It records the exact op/shape, full-graph
 status, compiler diagnostic code, real open weight source and successful program
-count. Exit 65 is a compiler refusal; timeouts and invocation failures are not
-classified as refused operations. Raw job logs remain local; only public model
+count. Exit 65 with parser/lexer diagnostics is an export/parser error, not an
+operation refusal; timeouts and invocation failures are also errors. Raw job logs remain local; only public model
 shapes and diagnostics should be copied into a public coverage report.
 
 Architecture-derived candidate gaps to check against those receipts:

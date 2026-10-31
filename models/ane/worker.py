@@ -47,6 +47,11 @@ def main():
     root = a.bundle.resolve()
     verify(root,a.ggml,(a.n_mels,a.n_ctx,a.n_state))
     import numpy as np
+    mel = np.fromfile(a.input,dtype='<f4')
+    if mel.size != a.n_mels*2*a.n_ctx or not np.isfinite(mel).all(): raise ValueError('invalid mel')
+    with np.errstate(over='ignore'):
+        mel_fp16 = mel.astype('<f2')
+    if not np.isfinite(mel_fp16).all(): raise ValueError('mel exceeds fp16 range')
     library = os.environ.get('WHISPER_ANE_LIB', '/usr/lib/libane_python.so')
     compiler = Path(os.environ['WHISPER_ANE_COMPILER']).resolve()
     lib = C.CDLL(library)
@@ -56,10 +61,8 @@ def main():
     rc = lib.pyane_query_caps(0,C.byref(abi),C.byref(chip))
     if rc or (abi.value,chip.value) != (1,13):
         raise OSError(f'H13 runner refused caps rc={rc} ABI={abi.value} chip={chip.value}')
-    mel = np.fromfile(a.input,dtype='<f4')
-    if mel.size != a.n_mels*2*a.n_ctx or not np.isfinite(mel).all(): raise ValueError('invalid mel')
     inp, out = a.input.parent/'mel.fp16', a.output.parent/'encoder.fp16'
-    mel.astype('<f2').tofile(inp)
+    mel_fp16.tofile(inp)
     command = [sys.executable,str(compiler/'tools/h13_run_linux.py'),str(root/'package'),
                '--mil',str(root/'model.mil'),'--model-root',str(root),'--libane-library',library,
                '--deadline-seconds','120','--input',f'mel={inp}','--output',f'encoder={out}']

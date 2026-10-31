@@ -80,9 +80,10 @@ rewritten manifest or arbitrary semantic equivalence. Bundles are trusted local
 build artifacts. Quantized ggml checkpoints are outside this comparison.
 
 `compile-TARGET/results.json` retains full-graph and isolated-operation results,
-exact shapes, commands, elapsed time and diagnostics. Only exit 65 represents a
-compiler refusal; 64 is invocation/syntax usage, 74 is output I/O failure and 124
-is a host timeout. Shape probes use the real open weights and share the exported
+exact runtime/constant shapes, commands, elapsed time and diagnostic codes. Exit
+65 represents compiler rejection; parser/lexer diagnostics are classified as
+errors, separately from operation refusals. Exit 64 is invocation usage, 74 is
+output I/O failure and 124 is a host timeout. Shape probes use the real open weights and share the exported
 blob. One probe per op/input/output geometry avoids repeating identical layer
 envelopes. Successful isolated packages are removed after recording program
 counts. A successful complete H13 package alone is copied to `package/`.
@@ -145,7 +146,8 @@ overhead. The metric is seconds per audio second; lower is faster.
 projection as `prefix-N.f32`, row-major `[1500,D]` float32. Output capture is
 explicit and can contain private audio-derived features: preserve it locally,
 and publish only public-test results. Evaluation compares every captured tensor
-and reports maximum absolute error. Candidate fallback must never be labeled
+and reports maximum absolute error. The two capture sets must match exactly;
+empty tensors and nonfinite values are rejected. Candidate fallback must never be labeled
 native parity: the receipt requires native backend markers with no CPU marker.
 `--require-ane` returns failure, after saving the receipt, when any candidate
 call used CPU. Numerical tolerances for actual ANE outputs must be selected from

@@ -27,6 +27,7 @@ def export(args):
     from whisper.model import MultiHeadAttention
     MultiHeadAttention.use_sdpa = False
     torch.set_num_threads(args.threads)
+    torch.set_grad_enabled(False)
     model = whisper.load_model(args.model, device='cpu', download_root=str(args.cache))
     encoder = model.encoder.eval()
     sample = torch.zeros(1, 80, 3000)
@@ -38,6 +39,10 @@ def export(args):
                       minimum_deployment_target=ct.target.iOS16,
                       compute_precision=ct.precision.FLOAT16)
     fn = prog.functions['main']
+    if (len(fn.inputs) != 1 or len(fn.outputs) != 1 or
+            list(next(iter(fn.inputs.values())).shape) != [1,80,3000] or
+            list(fn.outputs[0].shape) != [1,1500,model.dims.n_audio_state]):
+        raise ValueError('converted encoder interface differs from the requested model')
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
     (root/'probes').mkdir()
@@ -77,7 +82,7 @@ def export(args):
             consts[v] = line
             lines.append(line)
             continue
-        inputs, runtime, deps, attributes = [], {}, [], {}
+        inputs, runtime, deps, attributes, constants = [], {}, [], {}, {}
         for key, value in op.inputs.items():
             if value is None: continue
             sequence = isinstance(value, (tuple, list))
@@ -86,6 +91,7 @@ def export(args):
             for x in values:
                 refs.append(names[x])
                 if x in consts:
+                    constants[names[x]] = [int(d) for d in np.asarray(x.val).shape]
                     # Small control attributes distinguish e.g. transpose axes.
                     value_array = np.asarray(x.val)
                     if value_array.size <= 32:
@@ -103,6 +109,7 @@ def export(args):
         (root/'probes'/f'{probe}.mil').write_text(text)
         records.append({'name': probe, 'op': op.op_type, 'mil': f'probes/{probe}.mil',
                         'inputs': {n: [int(d) for d in x.shape] for n,x in runtime.items()},
+                        'constants': constants,
                         'output': [int(d) for d in v.shape], 'attributes': attributes})
     payload[:8] = struct.pack('<II', 1, 2)
     (root/'weights.bin').write_bytes(payload)

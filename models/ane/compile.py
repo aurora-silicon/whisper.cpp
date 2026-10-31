@@ -3,6 +3,7 @@
 """Compile full graph and isolated MIL ops, preserving every refusal by target."""
 import argparse
 import json
+import re
 from pathlib import Path
 import subprocess
 import time
@@ -27,7 +28,9 @@ def main():
     # layers share the compiler envelope. Keep the first layer's real weights.
     unique = {}
     for probe in meta['probes']:
-        key = json.dumps([probe['op'], list(probe['inputs'].values()), probe['output'], probe.get('attributes')], sort_keys=True)
+        key = json.dumps([probe['op'], list(probe['inputs'].values()),
+                          list(probe.get('constants', {}).values()), probe['output'],
+                          probe.get('attributes')], sort_keys=True)
         unique.setdefault(key, probe)
     probes = [{'name':'full-model','mil':'model.mil'}, *unique.values()]
     for probe in probes:
@@ -50,8 +53,13 @@ def main():
         if name != 'full-model' and package.exists():
             import shutil
             shutil.rmtree(package)
-        records.append({'program_count':count, **probe, 'rc':rc, 'seconds':time.monotonic()-start,
-                        'diagnostic':stderr[-4000:], 'command':command})
+        codes = sorted(set(re.findall(r'(?:error|fatal) \[([^\]]+)\]', stderr)))
+        # The compiler also uses exit 65 for malformed MIL. Keep exporter/parser
+        # failures distinct from real operation-envelope coverage gaps.
+        syntax_error = any(c.startswith(('mil.parse.', 'mil.lex.')) for c in codes)
+        outcome = 'compiled' if rc == 0 else 'refused' if rc == 65 and not syntax_error else 'error'
+        records.append({'program_count':count, **probe, 'rc':rc, 'outcome':outcome, 'seconds':time.monotonic()-start,
+                        'diagnostic_codes':codes, 'diagnostic':stderr[-4000:], 'command':command})
         (out/'results.json').write_text(json.dumps({'target':a.target,'compiler_sha256':sha(a.compiler),
                                                    'records':records},indent=2)+'\n')
     # Never expose a partial or stale compilation as a runnable bundle.
@@ -59,6 +67,7 @@ def main():
         import shutil
         shutil.copytree(out/'full-model',root/'package')
     print(json.dumps({'target':a.target,'full_model_rc':records[0]['rc'],
-                      'refused':sum(r['rc'] != 0 for r in records),'total':len(records)}))
+                      'refused':sum(r['outcome'] == 'refused' for r in records),
+                      'errors':sum(r['outcome'] == 'error' for r in records),'total':len(records)}))
 
 if __name__ == '__main__': main()

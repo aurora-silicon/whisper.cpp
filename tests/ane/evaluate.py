@@ -7,6 +7,7 @@ import argparse
 import array
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -33,6 +34,24 @@ def digest(path):
     with path.open('rb') as f:
         for block in iter(lambda: f.read(1024*1024), b''): h.update(block)
     return h.hexdigest()
+
+
+def encoder_parity(cpu, candidate):
+    captures = [{p.name: p for p in root.glob('*.f32')} for root in (cpu, candidate)]
+    if not captures[0] or captures[0].keys() != captures[1].keys():
+        raise ValueError('encoder capture sets differ or are empty')
+    max_diff, elements = 0., 0
+    for name in sorted(captures[0]):
+        x, y = array.array('f'), array.array('f')
+        x.frombytes(captures[0][name].read_bytes())
+        y.frombytes(captures[1][name].read_bytes())
+        if not x or len(x) != len(y):
+            raise ValueError('encoder output shape mismatch or empty tensor')
+        if not all(math.isfinite(v) for v in x) or not all(math.isfinite(v) for v in y):
+            raise ValueError('nonfinite encoder output')
+        max_diff = max(max_diff, max(abs(i-j) for i,j in zip(x,y)))
+        elements += len(x)
+    return {'max_abs_diff':max_diff, 'elements':elements, 'tensors':len(captures[0])}
 
 
 def main():
@@ -76,11 +95,12 @@ def main():
                        '-ng','-nfa','-t',str(a.threads),'-l','en','-nt','-otxt','-of',str(prefix)]
             before = resource.getrusage(resource.RUSAGE_CHILDREN)
             start = time.monotonic()
-            r = subprocess.run(command,env=env,capture_output=True,text=True,check=True)
+            r = subprocess.run(command,env=env,capture_output=True,text=True)
             elapsed = time.monotonic()-start
             after = resource.getrusage(resource.RUSAGE_CHILDREN)
             used = after.ru_utime+after.ru_stime-before.ru_utime-before.ru_stime
             (dest/(key+'.log')).write_text(r.stdout+'\n'+r.stderr)
+            r.check_returncode()
             hypothesis = Path(str(prefix)+'.txt').read_text()
             ref = words(refs[key]); actual = words(hypothesis)
             count = errors(ref,actual)
@@ -97,19 +117,9 @@ def main():
                                'wer':total_errors/total_words,'audio_s':audio_s,
                                'wall_s':wall_s,'cpu_s':cpu_s,'encoder_s':encoder_s,
                                'wall_rtf':wall_s/audio_s,'cpu_rtf':cpu_s/audio_s,'encoder_rtf':encoder_s/audio_s}
-    max_diff, elements, tensors = 0.,0,0
-    for base in sorted((a.out/'cpu').glob('*.f32')):
-        other = a.out/'candidate'/base.name
-        x,y = array.array('f'),array.array('f')
-        x.frombytes(base.read_bytes()); y.frombytes(other.read_bytes())
-        if len(x) != len(y): raise ValueError('encoder output shape mismatch')
-        import math
-        if not all(math.isfinite(v) for v in x) or not all(math.isfinite(v) for v in y): raise ValueError('nonfinite encoder output')
-        max_diff = max(max_diff,max((abs(i-j) for i,j in zip(x,y)),default=0))
-        elements += len(x); tensors += 1
-    if not tensors: raise ValueError('no encoder parity captures')
-    report['encoder_parity'] = {'max_abs_diff':max_diff,'elements':elements,'tensors':tensors,
-                                 'candidate_native':all(r['native'] and not r['fallback'] for r in report['arms']['candidate']['utterances'])}
+    report['encoder_parity'] = encoder_parity(a.out/'cpu', a.out/'candidate')
+    report['encoder_parity']['candidate_native'] = all(
+        r['native'] and not r['fallback'] for r in report['arms']['candidate']['utterances'])
     (a.out/'results.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps({k:{n:v for n,v in arm.items() if n != 'utterances'} for k,arm in report['arms'].items()}))
     print(json.dumps(report['encoder_parity']))

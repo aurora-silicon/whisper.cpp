@@ -34,6 +34,9 @@ class BundleTests(unittest.TestCase):
     def test_modified_mil(self):
         (self.root/'model.mil').write_bytes(b'changed')
         with self.assertRaisesRegex(ValueError,'hash mismatch'): self.verify()
+    def test_modified_blob(self):
+        (self.root/'weights.bin').write_bytes(b'changed')
+        with self.assertRaisesRegex(ValueError,'hash mismatch'): self.verify()
     def test_other_chip(self):
         (self.root/'package/manifest.json').write_text(json.dumps({'target':'H14'}))
         with self.assertRaisesRegex(ValueError,'only H13'): self.verify()
