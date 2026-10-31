@@ -167,4 +167,9 @@ Whisper source and public weights: [MIT](https://github.com/openai/whisper/blob/
 coremltools: BSD-3-Clause; PyTorch: BSD-3-Clause; NumPy: BSD-3-Clause;
 libane and mil-hwx-compiler: MIT. New integration code follows this repository's
 MIT license. No Apple-compiled model/program/firmware bytes are included.
+LibriSpeech is CC BY 4.0, prepared by Vassil Panayotov with assistance from Daniel
+Povey, from LibriVox audiobooks; see the [official corpus page](https://www.openslr.org/12/)
+and Panayotov, Chen, Povey and Khudanpur, ICASSP 2015. This evaluation converts
+selected clips to mono 16 kHz WAV and normalizes reference/hypothesis words as
+described above.
 All changes and the PR target only the Aurora whisper.cpp fork.

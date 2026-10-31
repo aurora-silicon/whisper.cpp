@@ -2470,7 +2470,7 @@ static bool whisper_encode_internal(
                 }
                 const auto & hp = wctx.model.hparams;
                 const int n_ctx = int(mel->ne[0]/2);
-                if (!whisper_ane_encode(wstate.ctx_ane, wstate.inp_mel.data(), hp.n_mels,
+                const bool encoded = whisper_ane_encode(wstate.ctx_ane, wstate.inp_mel.data(), hp.n_mels,
                         n_ctx, hp.n_audio_state,
                         [&]() {
                             return ggml_graph_compute_helper(sched, gf, n_threads) &&
@@ -2478,13 +2478,14 @@ static bool whisper_encode_internal(
                         },
                         [&](const float * values) {
                             ggml_backend_tensor_set(wstate.embd_enc, values, 0, ggml_nbytes(wstate.embd_enc));
-                        })) {
-                    return false;
-                }
+                        });
                 // Native success skipped both compute helpers, which normally
                 // reset these schedulers. Keep the next encode allocatable.
                 ggml_backend_sched_reset(sched);
                 ggml_backend_sched_reset(enc_sched);
+                if (!encoded) {
+                    return false;
+                }
                 encoder_done = true;
             } else
 #endif

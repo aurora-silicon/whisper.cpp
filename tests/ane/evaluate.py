@@ -80,7 +80,7 @@ def main():
     if not clips: raise ValueError('no LibriSpeech flac clips')
     report = {'model_sha256':digest(a.model), 'threads':a.threads,
               'normalization':"uppercase [A-Z0-9']+ for reference and hypothesis",
-              'selection':'lexicographically first flac paths', 'clips':[], 'arms':{}}
+              'selection':'lexicographically first flac paths', 'arms':{}}
     for arm in ('cpu','candidate'):
         dest = a.out/arm; dest.mkdir()
         rows, total_errors, total_words, audio_s, wall_s, cpu_s, encoder_s = [],0,0,0.,0.,0.,0.
