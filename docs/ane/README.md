@@ -149,6 +149,9 @@ and publish only public-test results. Evaluation compares every captured tensor
 and reports maximum absolute error. The two capture sets must match exactly;
 empty tensors and nonfinite values are rejected. Candidate fallback must never be labeled
 native parity: the receipt requires native backend markers with no CPU marker.
+The JSON also records each tensor's name, element count, maximum error and both
+SHA-256 hashes so parity evidence survives when large captures are not retrieved
+from an ephemeral build job.
 `--require-ane` returns failure, after saving the receipt, when any candidate
 call used CPU. Numerical tolerances for actual ANE outputs must be selected from
 measured encoder errors and WER, not inferred from fallback equality.

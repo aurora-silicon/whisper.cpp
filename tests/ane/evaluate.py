@@ -40,7 +40,7 @@ def encoder_parity(cpu, candidate):
     captures = [{p.name: p for p in root.glob('*.f32')} for root in (cpu, candidate)]
     if not captures[0] or captures[0].keys() != captures[1].keys():
         raise ValueError('encoder capture sets differ or are empty')
-    max_diff, elements = 0., 0
+    max_diff, elements, receipts = 0., 0, []
     for name in sorted(captures[0]):
         x, y = array.array('f'), array.array('f')
         x.frombytes(captures[0][name].read_bytes())
@@ -49,9 +49,14 @@ def encoder_parity(cpu, candidate):
             raise ValueError('encoder output shape mismatch or empty tensor')
         if not all(math.isfinite(v) for v in x) or not all(math.isfinite(v) for v in y):
             raise ValueError('nonfinite encoder output')
-        max_diff = max(max_diff, max(abs(i-j) for i,j in zip(x,y)))
+        error = max(abs(i-j) for i,j in zip(x,y))
+        max_diff = max(max_diff, error)
         elements += len(x)
-    return {'max_abs_diff':max_diff, 'elements':elements, 'tensors':len(captures[0])}
+        receipts.append({'name':name, 'elements':len(x), 'max_abs_diff':error,
+                         'cpu_sha256':digest(captures[0][name]),
+                         'candidate_sha256':digest(captures[1][name])})
+    return {'max_abs_diff':max_diff, 'elements':elements,
+            'tensors':len(captures[0]), 'captures':receipts}
 
 
 def main():

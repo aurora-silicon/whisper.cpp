@@ -35,7 +35,10 @@ class ParityTests(unittest.TestCase):
     def parity(self): return evaluate.encoder_parity(self.cpu,self.candidate)
     def test_numeric_error(self):
         (self.candidate/'clip-0.f32').write_bytes(array.array('f',[1.25,1.5]).tobytes())
-        self.assertEqual(self.parity(), {'max_abs_diff':.5,'elements':2,'tensors':1})
+        result = self.parity()
+        self.assertEqual({k:result[k] for k in ('max_abs_diff','elements','tensors')},
+                         {'max_abs_diff':.5,'elements':2,'tensors':1})
+        self.assertNotEqual(result['captures'][0]['cpu_sha256'],result['captures'][0]['candidate_sha256'])
     def test_extra_candidate_window(self):
         (self.candidate/'clip-1.f32').write_bytes(b'')
         with self.assertRaisesRegex(ValueError,'capture sets'): self.parity()
@@ -81,5 +84,6 @@ class EvaluationTests(unittest.TestCase):
             result = json.loads((out/'results.json').read_text())
             self.assertFalse(result['encoder_parity']['candidate_native'])
             self.assertEqual(result['encoder_parity']['max_abs_diff'],0.)
+            self.assertTrue(all(r['cpu_sha256'] == r['candidate_sha256'] for r in result['encoder_parity']['captures']))
             self.assertTrue(all(r['fallback'] for r in result['arms']['candidate']['utterances']))
 if __name__ == '__main__': unittest.main()
