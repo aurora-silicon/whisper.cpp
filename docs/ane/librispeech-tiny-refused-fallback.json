@@ -1,0 +1,114 @@
+{
+  "model_sha256": "921e4cf8686fdd993dcd081a5da5b6c365bfde1162e72b08d75ac75289920b1f",
+  "threads": 8,
+  "normalization": "uppercase [A-Z0-9']+ for reference and hypothesis",
+  "selection": "lexicographically first flac paths",
+  "arms": {
+    "cpu": {
+      "utterances": [
+        {
+          "id": "1089-134686-0000",
+          "flac_sha256": "30885601173f96b0d8ddd020dc959b055c6c1582b85a33e3fcab8c4b08ed94c2",
+          "audio_s": 10.435,
+          "wall_s": 0.7620261507108808,
+          "cpu_s": 4.6695780000000005,
+          "encoder_s": 0.42119,
+          "errors": 1,
+          "words": 28,
+          "native": false,
+          "fallback": false,
+          "native_requested": false,
+          "hypothesis": "He hoped there would be stew for dinner, turnips and carrots and bruised potatoes and fat mutton pieces to be ladled out in thick, peppered flower-fattened sauce."
+        },
+        {
+          "id": "1089-134686-0001",
+          "flac_sha256": "3fc09ec6d4cc496c530b2019b17bd8fc8ef8a43d6697090971dd1d52cc3d4d89",
+          "audio_s": 3.275,
+          "wall_s": 0.6686475179158151,
+          "cpu_s": 4.419805,
+          "encoder_s": 0.48767,
+          "errors": 2,
+          "words": 8,
+          "native": false,
+          "fallback": false,
+          "native_requested": false,
+          "hypothesis": "Stuffed it into you, his belly counseled him."
+        }
+      ],
+      "errors": 3,
+      "words": 36,
+      "wer": 0.08333333333333333,
+      "audio_s": 13.71,
+      "wall_s": 1.4306736686266959,
+      "cpu_s": 9.089383000000002,
+      "encoder_s": 0.90886,
+      "wall_rtf": 0.10435256518064885,
+      "cpu_rtf": 0.662974690007294,
+      "encoder_rtf": 0.06629175784099198
+    },
+    "candidate": {
+      "utterances": [
+        {
+          "id": "1089-134686-0000",
+          "flac_sha256": "30885601173f96b0d8ddd020dc959b055c6c1582b85a33e3fcab8c4b08ed94c2",
+          "audio_s": 10.435,
+          "wall_s": 0.7406938192434609,
+          "cpu_s": 3.9353739999999995,
+          "encoder_s": 0.403,
+          "errors": 1,
+          "words": 28,
+          "native": false,
+          "fallback": true,
+          "native_requested": true,
+          "hypothesis": "He hoped there would be stew for dinner, turnips and carrots and bruised potatoes and fat mutton pieces to be ladled out in thick, peppered flower-fattened sauce."
+        },
+        {
+          "id": "1089-134686-0001",
+          "flac_sha256": "3fc09ec6d4cc496c530b2019b17bd8fc8ef8a43d6697090971dd1d52cc3d4d89",
+          "audio_s": 3.275,
+          "wall_s": 0.4945720680989325,
+          "cpu_s": 3.2448080000000017,
+          "encoder_s": 0.35718,
+          "errors": 2,
+          "words": 8,
+          "native": false,
+          "fallback": true,
+          "native_requested": false,
+          "hypothesis": "Stuffed it into you, his belly counseled him."
+        }
+      ],
+      "errors": 3,
+      "words": 36,
+      "wer": 0.08333333333333333,
+      "audio_s": 13.71,
+      "wall_s": 1.2352658873423934,
+      "cpu_s": 7.180182000000001,
+      "encoder_s": 0.7601800000000001,
+      "wall_rtf": 0.09009962708551374,
+      "cpu_rtf": 0.5237185995623633,
+      "encoder_rtf": 0.05544711889132021
+    }
+  },
+  "encoder_parity": {
+    "max_abs_diff": 0.0,
+    "elements": 1152000,
+    "tensors": 2,
+    "captures": [
+      {
+        "name": "1089-134686-0000-0.f32",
+        "elements": 576000,
+        "max_abs_diff": 0.0,
+        "cpu_sha256": "46b544e02a0a1136f807e640755bf4dc9aa038218aa47f089faf295cc8c526ea",
+        "candidate_sha256": "46b544e02a0a1136f807e640755bf4dc9aa038218aa47f089faf295cc8c526ea"
+      },
+      {
+        "name": "1089-134686-0001-0.f32",
+        "elements": 576000,
+        "max_abs_diff": 0.0,
+        "cpu_sha256": "9fd0c7cbc05a3a9ce63d38f4c287b34e736f1e07bf5ecc166aef085118514a97",
+        "candidate_sha256": "9fd0c7cbc05a3a9ce63d38f4c287b34e736f1e07bf5ecc166aef085118514a97"
+      }
+    ],
+    "candidate_native": false
+  }
+}

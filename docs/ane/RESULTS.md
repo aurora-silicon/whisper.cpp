@@ -1,8 +1,7 @@
 # Verification results
 
 Status: Linux build and software checks pass; no native Whisper encoder
-inference result is claimed. Compiler and corpus jobs remain queued through the
-controller. This page will be updated from their saved receipts before review.
+inference result is claimed. The corrected compiler job remains queued through the controller. This page will be updated from their saved receipts before review.
 
 ## Software checks
 
@@ -12,16 +11,40 @@ native-retirement check and one compiler-classification check. Python syntax, sh
 checks pass. The optional power sampler runs a command without a sensor and
 correctly labels power unavailable. These are software checks only.
 
-The Linux build at `37f6e7c6` with `WHISPER_ANE=ON` and `GGML_NATIVE=OFF` passes on x86_64
+The Linux build at `31200669` with `WHISPER_ANE=ON` and `GGML_NATIVE=OFF` passes on x86_64
 with GCC 16.1.1. All five unit tests pass, including the adapter fallback and
-repeated native-handoff graph tests. The fourteen Python checks also pass on
-Linux. The build used eight jobs and the pinned libane revision in
+repeated native-handoff graph tests. All sixteen Python checks also pass on Linux. The build used eight jobs and the pinned libane revision in
 [the build instructions](README.md).
-The later scheduler error-path cleanup will be rebuilt by the queued corpus job.
 
-Real CPU/fallback LibriSpeech measurements are pending the buildbox corpus job.
-No host RTF or real encoder max-abs number has been measured yet. No ANE
-throughput, WER or power number is available.
+## Host CPU and fallback measurements
+
+Measured on an Intel Core i9-13900K Linux x86_64 build host, eight threads,
+Release, `GGML_NATIVE=OFF` (AVX2 CPU backend), GPU and flash attention disabled.
+The model is unquantized tiny.en; SHA-256
+`921e4cf8686fdd993dcd081a5da5b6c365bfde1162e72b08d75ac75289920b1f`.
+The dataset is the first 20 lexical LibriSpeech test-clean clips, 156.4701 seconds
+and 410 reference words. Both arms use the same CPU decoder and settings.
+
+| Arm | WER | Edits / words | Wall seconds | Wall RTF | CPU RTF | Encoder RTF |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| CPU | 3.1707% | 13 / 410 | 12.4695 | 0.07969 | 0.49770 | 0.04739 |
+| Missing-package CPU fallback | 3.1707% | 13 / 410 | 12.0706 | 0.07714 | 0.48292 | 0.04581 |
+
+All 20 encoder captures (11,520,000 float32 values) match byte for byte, maximum
+absolute difference **0.0**. The present-but-invalid-package arm also matches
+the CPU on two clips (1,152,000 values, max abs 0.0); both arms have 3 edits in
+36 words, WER 8.3333%. Missing/invalid bundles are refused before device access.
+After the first fallback, the evaluator requests CPU for the remaining clips.
+The receipts include per-clip hypotheses, timing, audio hashes and every encoder
+tensor hash: [20-clip receipt](librispeech-tiny-cpu-fallback.json),
+[invalid-package receipt](librispeech-tiny-refused-fallback.json).
+
+These are **CPU fallback parity and WER**, not ANE-vs-CPU numerical parity.
+`candidate_native=false` in both receipts. This is one paired run on a shared
+build host; small timing differences between the CPU arms are noise/cache
+effects, not acceleration. Wall RTF includes process/model setup and parity
+capture; encoder RTF also includes CPU cross projection. The subset and word
+normalizer are described in [README](README.md). No ANE RTF or power was measured.
 
 ## Export configuration correction
 
