@@ -234,3 +234,14 @@ if (WHISPER_ANE)
     add_test(NAME test-ane-adapter COMMAND test-ane-adapter)
     set_tests_properties(test-ane-adapter PROPERTIES LABELS "unit;ane")
 endif()
+
+if (WHISPER_ANE)
+    add_executable(test-ane-graphs ane/test-graphs.cpp)
+    target_link_libraries(test-ane-graphs PRIVATE whisper)
+    target_compile_options(test-ane-graphs PRIVATE -UNDEBUG)
+    target_compile_definitions(test-ane-graphs PRIVATE
+        ANE_TEST_MODEL="${PROJECT_SOURCE_DIR}/models/for-tests-ggml-tiny.bin"
+        ANE_TEST_WORKER="${PROJECT_SOURCE_DIR}/tests/ane/fake-worker.py")
+    add_test(NAME test-ane-graphs COMMAND test-ane-graphs)
+    set_tests_properties(test-ane-graphs PROPERTIES LABELS "unit;ane")
+endif()

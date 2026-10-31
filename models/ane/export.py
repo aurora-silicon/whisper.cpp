@@ -53,7 +53,7 @@ def export(args):
     def typ(v):
         dtype = types.builtin_to_string(v.dtype)
         shape = list(v.shape) if types.is_tensor(v.sym_type) else []
-        if any(type(int(d)) is not int or int(d) <= 0 for d in shape):
+        if any(int(d) <= 0 for d in shape):
             raise ValueError('requires positive static dimensions')
         return f'tensor<{dtype}, [{", ".join(str(int(d)) for d in shape)}]>' if types.is_tensor(v.sym_type) else dtype
 
@@ -102,8 +102,8 @@ def export(args):
         text += f'  func main<ios16>({args_text}) {{\n' + '\n'.join(deps+[line]) + f'\n  }} -> ({name});\n}}\n'
         (root/'probes'/f'{probe}.mil').write_text(text)
         records.append({'name': probe, 'op': op.op_type, 'mil': f'probes/{probe}.mil',
-                        'inputs': {n: list(x.shape) for n,x in runtime.items()},
-                        'output': list(v.shape), 'attributes': attributes})
+                        'inputs': {n: [int(d) for d in x.shape] for n,x in runtime.items()},
+                        'output': [int(d) for d in v.shape], 'attributes': attributes})
     payload[:8] = struct.pack('<II', 1, 2)
     (root/'weights.bin').write_bytes(payload)
     signature = ', '.join(typ(v)+' '+names[v] for v in fn.inputs.values())

@@ -2481,6 +2481,10 @@ static bool whisper_encode_internal(
                         })) {
                     return false;
                 }
+                // Native success skipped both compute helpers, which normally
+                // reset these schedulers. Keep the next encode allocatable.
+                ggml_backend_sched_reset(sched);
+                ggml_backend_sched_reset(enc_sched);
                 encoder_done = true;
             } else
 #endif
