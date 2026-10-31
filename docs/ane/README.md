@@ -152,6 +152,9 @@ native parity: the receipt requires native backend markers with no CPU marker.
 `--require-ane` returns failure, after saving the receipt, when any candidate
 call used CPU. Numerical tolerances for actual ANE outputs must be selected from
 measured encoder errors and WER, not inferred from fallback equality.
+After the first fallback, evaluation disables native requests for subsequent
+clips, preserving retirement across the separate CLI processes. Those rows have
+`native_requested=false` and `fallback=true`; all CPU measurements still finish.
 
 See [lead commands](M1PRO.md) and the measured [results and compiler gaps](RESULTS.md).
 

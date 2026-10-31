@@ -1,19 +1,26 @@
 # Verification results
 
-Status: implementation under validation; no native Whisper encoder inference
-result is claimed. Build-host and compiler jobs are queued through the controller.
-This page will be updated from their saved receipts before review.
+Status: Linux build and software checks pass; no native Whisper encoder
+inference result is claimed. Compiler and corpus jobs remain queued through the
+controller. This page will be updated from their saved receipts before review.
 
 ## Software checks
 
-Fourteen host standard-library tests pass: seven bundle/weight/interface
-checks, two WER metric checks and five capture/parity checks. Python syntax, shell syntax and whitespace
+Fifteen host standard-library tests pass: seven bundle/weight/interface
+checks, two WER metric checks, five capture/parity checks and one cross-process
+native-retirement check. Python syntax, shell syntax and whitespace
 checks pass. The optional power sampler runs a command without a sensor and
 correctly labels power unavailable. These are software checks only.
 
-The Linux adapter tests and real CPU/fallback LibriSpeech measurements are
-pending the buildbox run. No host RTF or real encoder max-abs number has been
-measured yet. No ANE throughput, WER or power number is available.
+The Linux build with `WHISPER_ANE=ON` and `GGML_NATIVE=OFF` passes on x86_64
+with GCC 16.1.1. All five unit tests pass, including the adapter fallback and
+repeated native-handoff graph tests. The fourteen Python checks also pass on
+Linux. The build used eight jobs and the pinned libane revision in
+[the build instructions](README.md).
+
+Real CPU/fallback LibriSpeech measurements are pending the buildbox corpus job.
+No host RTF or real encoder max-abs number has been measured yet. No ANE
+throughput, WER or power number is available.
 
 ## Coverage handoff in t-3651 terms
 

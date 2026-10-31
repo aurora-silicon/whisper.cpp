@@ -56,6 +56,9 @@ must be true; a successful CLI run alone is not proof of native inference.
 `ane_stats` job/busy counters must advance during native runs. The native runner
 already checks each output against its MIL reference, which is a distinct check
 from comparing the complete encoder with whisper.cpp's CPU output.
+If one candidate falls back, the evaluator disables native requests for later
+clips and finishes on CPU. Inspect the preserved failure before another native
+qualification run; do not retry an uncertain or wedged native owner.
 
 The current adapter includes process startup, weight hashing and the runner's
 reference calculation on every encoder call. For an engine-only repeat benchmark,

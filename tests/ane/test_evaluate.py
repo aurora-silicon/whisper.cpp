@@ -1,9 +1,15 @@
 # SPDX-License-Identifier: MIT
 import importlib.util
 import array
+import contextlib
+import io
+import json
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
+import wave
 spec = importlib.util.spec_from_file_location('evaluate', Path(__file__).with_name('evaluate.py'))
 evaluate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(evaluate)
@@ -42,4 +48,38 @@ class ParityTests(unittest.TestCase):
     def test_nonfinite(self):
         (self.candidate/'clip-0.f32').write_bytes(array.array('f',[1.,float('nan')]).tobytes())
         with self.assertRaisesRegex(ValueError,'nonfinite'): self.parity()
+
+class EvaluationTests(unittest.TestCase):
+    def test_fallback_retires_native_across_processes(self):
+        # A fresh CLI process must not undo retirement after a native failure.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data = root/'data'; data.mkdir()
+            for key in ('0001','0002'): (data/(key+'.flac')).write_bytes(b'public fixture')
+            (data/'clips.trans.txt').write_text('0001 A\n0002 A\n')
+            model = root/'model.bin'; model.write_bytes(b'fixture weights')
+            out = root/'results'
+            attempts = []
+            def run(command, **kwargs):
+                if command[0] == 'ffmpeg':
+                    with wave.open(command[-1],'wb') as wav:
+                        wav.setparams((1,2,16000,0,'NONE','not compressed'))
+                        wav.writeframes(bytes(320))
+                    return subprocess.CompletedProcess(command,0)
+                requested = 'WHISPER_ANE_ENCODER' in kwargs['env']
+                attempts.append(requested)
+                prefix = command[command.index('-of')+1]
+                Path(prefix+'.txt').write_text('A')
+                Path(prefix+'-0.f32').write_bytes(array.array('f',[1.,2.]).tobytes())
+                marker = 'ane: encoder backend=cpu reason=2\n' if requested else ''
+                return subprocess.CompletedProcess(command,0,'',marker+'encode time = 1.0 ms\n')
+            argv = ['evaluate','--cli',str(root/'cli'),'--model',str(model),
+                    '--dataset',str(data),'--bundle',str(root/'bundle'),'--out',str(out)]
+            with patch('sys.argv',argv), patch.object(evaluate.subprocess,'run',side_effect=run), contextlib.redirect_stdout(io.StringIO()):
+                evaluate.main()
+            self.assertEqual(attempts,[False,False,True,False])
+            result = json.loads((out/'results.json').read_text())
+            self.assertFalse(result['encoder_parity']['candidate_native'])
+            self.assertEqual(result['encoder_parity']['max_abs_diff'],0.)
+            self.assertTrue(all(r['fallback'] for r in result['arms']['candidate']['utterances']))
 if __name__ == '__main__': unittest.main()

@@ -79,6 +79,7 @@ def main():
     for arm in ('cpu','candidate'):
         dest = a.out/arm; dest.mkdir()
         rows, total_errors, total_words, audio_s, wall_s, cpu_s, encoder_s = [],0,0,0.,0.,0.,0.
+        retired = False
         for clip in clips:
             key = clip.stem
             wav = a.out/(key+'.wav')
@@ -88,7 +89,8 @@ def main():
             env = os.environ.copy()
             env.pop('ANEFORGE_ENCODER',None)
             env.pop('WHISPER_ANE_ENCODER',None)
-            if arm == 'candidate': env['WHISPER_ANE_ENCODER'] = str(a.bundle.resolve())
+            requested = arm == 'candidate' and not retired
+            if requested: env['WHISPER_ANE_ENCODER'] = str(a.bundle.resolve())
             prefix = (dest/key).resolve()
             env['WHISPER_ENCODER_DUMP'] = str(prefix)
             command = [str(a.cli.resolve()),'-m',str(a.model.resolve()),'-f',str(wav.resolve()),
@@ -107,10 +109,14 @@ def main():
             timings = re.search(r'encode time\s*=\s*([0-9.]+)\s*ms',r.stderr)
             enc = float(timings[1])/1000 if timings else None
             native = 'ane: encoder backend=ane ' in r.stderr
-            fallback = 'ane: encoder backend=cpu ' in r.stderr
+            fallback = arm == 'candidate' and (not native or 'ane: encoder backend=cpu ' in r.stderr)
+            # Each CLI invocation owns a fresh state. Preserve retirement across
+            # clips too: a failed candidate must not create another native owner.
+            if fallback: retired = True
             rows.append({'id':key,'flac_sha256':digest(clip),'audio_s':duration,'wall_s':elapsed,
                          'cpu_s':used,'encoder_s':enc,'errors':count,'words':len(ref),
-                         'native':native,'fallback':fallback,'hypothesis':hypothesis.strip()})
+                         'native':native,'fallback':fallback,'native_requested':requested,
+                         'hypothesis':hypothesis.strip()})
             total_errors += count; total_words += len(ref); audio_s += duration
             wall_s += elapsed; cpu_s += used; encoder_s += enc or 0
         report['arms'][arm] = {'utterances':rows,'errors':total_errors,'words':total_words,
