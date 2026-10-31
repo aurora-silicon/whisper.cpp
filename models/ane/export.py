@@ -36,7 +36,7 @@ def export(args):
     prog = ct.convert(traced, source='pytorch', convert_to='milinternal',
                       inputs=[ct.TensorType(name='mel', shape=sample.shape, dtype=np.float16)],
                       outputs=[ct.TensorType(name='encoder', dtype=np.float16)],
-                      minimum_deployment_target=ct.target.iOS16,
+                      minimum_deployment_target=ct.target.iOS18,
                       compute_precision=ct.precision.FLOAT16)
     fn = prog.functions['main']
     if (len(fn.inputs) != 1 or len(fn.outputs) != 1 or
@@ -105,7 +105,7 @@ def export(args):
         probe = f'{len(records):04d}-{op.op_type}'
         args_text = ', '.join(typ(x)+' '+n for n,x in runtime.items())
         text = 'program(1.3)\n[buildInfo = dict<string, string>({})]\n{\n'
-        text += f'  func main<ios16>({args_text}) {{\n' + '\n'.join(deps+[line]) + f'\n  }} -> ({name});\n}}\n'
+        text += f'  func main<ios18>({args_text}) {{\n' + '\n'.join(deps+[line]) + f'\n  }} -> ({name});\n}}\n'
         (root/'probes'/f'{probe}.mil').write_text(text)
         records.append({'name': probe, 'op': op.op_type, 'mil': f'probes/{probe}.mil',
                         'inputs': {n: [int(d) for d in x.shape] for n,x in runtime.items()},
@@ -115,13 +115,13 @@ def export(args):
     (root/'weights.bin').write_bytes(payload)
     signature = ', '.join(typ(v)+' '+names[v] for v in fn.inputs.values())
     text = 'program(1.3)\n[buildInfo = dict<string, string>({})]\n{\n'
-    text += f'  func main<ios16>({signature}) {{\n' + '\n'.join(lines) + '\n  } -> (encoder);\n}\n'
+    text += f'  func main<ios18>({signature}) {{\n' + '\n'.join(lines) + '\n  } -> (encoder);\n}\n'
     (root/'model.mil').write_text(text)
     checkpoint = args.cache / (args.model+'.pt')
     metadata = {'schema': 'whisper-ane-open-v1', 'model': args.model, 'license': 'MIT',
                 'weights_source': 'https://github.com/openai/whisper',
                 'checkpoint_sha256': sha(checkpoint), 'ggml_sha256': sha(args.ggml),
-                'coremltools': ct.__version__, 'torch': torch.__version__,
+                'coremltools': ct.__version__, 'torch': torch.__version__, 'mil_opset':'ios18',
                 'input': {'name': 'mel', 'shape': [1,80,3000]},
                 'output': {'name': 'encoder', 'shape': [1,1500,model.dims.n_audio_state]},
                 'files': {n: sha(root/n) for n in ('model.mil','weights.bin')}, 'probes': records}

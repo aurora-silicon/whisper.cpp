@@ -6,21 +6,32 @@ controller. This page will be updated from their saved receipts before review.
 
 ## Software checks
 
-Fifteen host standard-library tests pass: seven bundle/weight/interface
+Sixteen host standard-library tests pass: seven bundle/weight/interface
 checks, two WER metric checks, five capture/parity checks and one cross-process
-native-retirement check. Python syntax, shell syntax and whitespace
+native-retirement check and one compiler-classification check. Python syntax, shell syntax and whitespace
 checks pass. The optional power sampler runs a command without a sensor and
 correctly labels power unavailable. These are software checks only.
 
-The Linux build with `WHISPER_ANE=ON` and `GGML_NATIVE=OFF` passes on x86_64
+The Linux build at `37f6e7c6` with `WHISPER_ANE=ON` and `GGML_NATIVE=OFF` passes on x86_64
 with GCC 16.1.1. All five unit tests pass, including the adapter fallback and
 repeated native-handoff graph tests. The fourteen Python checks also pass on
 Linux. The build used eight jobs and the pinned libane revision in
 [the build instructions](README.md).
+The later scheduler error-path cleanup will be rebuilt by the queued corpus job.
 
 Real CPU/fallback LibriSpeech measurements are pending the buildbox corpus job.
 No host RTF or real encoder max-abs number has been measured yet. No ANE
 throughput, WER or power number is available.
+
+## Export configuration correction
+
+The first Linux job exported tiny.en, base.en and small.en successfully, but all
+H13/H14 full graphs and isolated probes stopped at
+`ane.verify.unsupported-opset`: program 1.3 requires `ios18`, while the exporter
+requested `ios16`. This was an exporter configuration error, not operation
+coverage evidence. Both coremltools conversion and emitted headers now use
+`ios18`; a corrected buildbox export/probe run is queued. The initial failed
+receipts are preserved locally.
 
 ## Coverage handoff in t-3651 terms
 

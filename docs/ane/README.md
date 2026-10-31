@@ -71,6 +71,9 @@ the documented public MIL syntax. It does not invoke Apple's model compiler,
 [coremltools conversion documentation](https://apple.github.io/coremltools/docs/source/coremltools.converters.convert.html)
 describes the MIL IR return type. Our serializer deliberately rejects control
 flow and multiple-output operations instead of inventing lowering rules.
+The conversion and emitted functions use the `ios18` MIL opset required by the
+pinned compiler for program version 1.3. This is the MIL language version used
+on Linux; export does not call a Core ML runtime.
 
 Generate the ggml model from the **same checkpoint**, as above. The bundle
 records checkpoint, MIL, weight-blob and ggml SHA-256 hashes; the worker verifies
@@ -81,8 +84,8 @@ build artifacts. Quantized ggml checkpoints are outside this comparison.
 
 `compile-TARGET/results.json` retains full-graph and isolated-operation results,
 exact runtime/constant shapes, commands, elapsed time and diagnostic codes. Exit
-65 represents compiler rejection; parser/lexer diagnostics are classified as
-errors, separately from operation refusals. Exit 64 is invocation usage, 74 is
+65 represents compiler rejection; parser/lexer and program/opset-version
+diagnostics are classified as errors, separately from operation refusals. Exit 64 is invocation usage, 74 is
 output I/O failure and 124 is a host timeout. Shape probes use the real open weights and share the exported
 blob. One probe per op/input/output geometry avoids repeating identical layer
 envelopes. Successful isolated packages are removed after recording program

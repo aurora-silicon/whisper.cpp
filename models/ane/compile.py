@@ -56,7 +56,8 @@ def main():
         codes = sorted(set(re.findall(r'(?:error|fatal) \[([^\]]+)\]', stderr)))
         # The compiler also uses exit 65 for malformed MIL. Keep exporter/parser
         # failures distinct from real operation-envelope coverage gaps.
-        syntax_error = any(c.startswith(('mil.parse.', 'mil.lex.')) for c in codes)
+        syntax_error = any(c.startswith(('mil.parse.', 'mil.lex.')) or c in (
+            'ane.verify.unsupported-opset', 'ane.verify.unsupported-program-version') for c in codes)
         outcome = 'compiled' if rc == 0 else 'refused' if rc == 65 and not syntax_error else 'error'
         records.append({'program_count':count, **probe, 'rc':rc, 'outcome':outcome, 'seconds':time.monotonic()-start,
                         'diagnostic_codes':codes, 'diagnostic':stderr[-4000:], 'command':command})

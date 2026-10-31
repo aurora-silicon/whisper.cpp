@@ -22,4 +22,5 @@ cmake --build "$out/build" -j8
 ctest --test-dir "$out/build" -L unit --output-on-failure
 python3 "$repo/tests/ane/test_worker.py"
 python3 "$repo/tests/ane/test_evaluate.py"
+python3 "$repo/tests/ane/test_compile.py"
 python3 "$repo/tests/ane/evaluate.py" --help
