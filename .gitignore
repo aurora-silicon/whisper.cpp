@@ -68,3 +68,8 @@ local.properties
 
 # AGENTS
 .pi/SYSTEM.md
+
+# Open ANE export/evaluation outputs can be regenerated; never commit binaries.
+build-ane-*/
+models/ane/__pycache__/
+tests/ane/__pycache__/

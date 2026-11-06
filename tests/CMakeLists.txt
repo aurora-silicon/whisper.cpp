@@ -221,3 +221,27 @@ add_parakeet_transcription_test(
     samples/diffusion2023-07-03.flac
     tests/parakeet-expected-diffusion-output.txt
     0.95)
+
+if (WHISPER_ANE)
+    add_executable(test-ane-adapter ane/test-adapter.cpp ../src/ane/whisper-ane.cpp)
+    target_include_directories(test-ane-adapter PRIVATE ../src ${LIBANE_INCLUDE_DIR})
+    target_link_libraries(test-ane-adapter PRIVATE ${LIBANE_LIBRARY})
+    target_compile_features(test-ane-adapter PRIVATE cxx_std_11)
+    target_compile_options(test-ane-adapter PRIVATE -UNDEBUG)
+    target_compile_definitions(test-ane-adapter PRIVATE
+        WHISPER_ANE_WORKER_PATH="${PROJECT_SOURCE_DIR}/models/ane/worker.py"
+        ANE_TEST_WORKER="${PROJECT_SOURCE_DIR}/tests/ane/fake-worker.py")
+    add_test(NAME test-ane-adapter COMMAND test-ane-adapter)
+    set_tests_properties(test-ane-adapter PROPERTIES LABELS "unit;ane")
+endif()
+
+if (WHISPER_ANE)
+    add_executable(test-ane-graphs ane/test-graphs.cpp)
+    target_link_libraries(test-ane-graphs PRIVATE whisper)
+    target_compile_options(test-ane-graphs PRIVATE -UNDEBUG)
+    target_compile_definitions(test-ane-graphs PRIVATE
+        ANE_TEST_MODEL="${PROJECT_SOURCE_DIR}/models/for-tests-ggml-tiny.bin"
+        ANE_TEST_WORKER="${PROJECT_SOURCE_DIR}/tests/ane/fake-worker.py")
+    add_test(NAME test-ane-graphs COMMAND test-ane-graphs)
+    set_tests_properties(test-ane-graphs PROPERTIES LABELS "unit;ane")
+endif()
